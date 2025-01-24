@@ -10,7 +10,7 @@ mod strips;
 fn main() {
     let mut strip = spi::gpio_10().unwrap();
     println!("Got Strip!!!");
-    let shader = color::<FragThree>(Srgb::new(0.5, 0.0, 0.5));
+    let shader = color::<FragThree>(Srgb::new(255, 0,255).into_linear());
 
     let start_instant = Instant::now();
     loop {
@@ -27,14 +27,14 @@ fn main() {
                 c.clamp()
             })
             .map(|c| {
-                println!("Color: {:?}", c);
                 RGB8::new(
                     (c.red * 256.0) as u8,
                     (c.green * 256.0) as u8,
                     (c.blue * 256.0) as u8,
                 )
             });
-
+        let colors = colors.collect::<Vec<_>>();
+            
         strip.write(colors).unwrap();
         sleep(std::time::Duration::from_millis(100));
     }

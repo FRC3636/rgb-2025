@@ -1,21 +1,24 @@
-use std::{
-    io::{self, Write},
-    path::Path,
-};
-use ws2812_spi::Ws2812;
+use rpi_embedded::spi::{Bus, Spi};
+use std::io;
+use ws2812_spi::hosted::Ws2812;
 
 #[derive(Debug)]
 pub struct SpiBus {
-    spi: spidev::Spidev,
+    spi: Spi,
 }
 impl SpiBus {
-    pub fn open(path: impl AsRef<Path>) -> io::Result<Self> {
-        let mut spi = spidev::Spidev::open(path)?;
-        let options = spidev::SpidevOptions::new()
-            .bits_per_word(8)
-            .max_speed_hz(3_800_000) // 125 MHz
-            .build();
-        spi.configure(&options)?;
+    pub fn open(bus: rpi_embedded::spi::Bus) -> io::Result<Self> {
+        let spi = Spi::new(
+            bus,
+            rpi_embedded::spi::SlaveSelect::Ss0,
+            2_000_000,
+            rpi_embedded::spi::Mode::Mode1,
+        )
+        .map_err(|e| match e {
+            rpi_embedded::spi::Error::Io(error) => error,
+            _ => io::Error::new(io::ErrorKind::Other, "SPI creation error"),
+        })?;
+
         Ok(Self { spi })
     }
 }
@@ -25,56 +28,46 @@ impl embedded_hal::spi::ErrorType for SpiBus {
 
 impl embedded_hal::spi::SpiBus for SpiBus {
     fn read(&mut self, words: &mut [u8]) -> Result<(), Self::Error> {
-        let mut transfer = spidev::SpidevTransfer::read(words);
         self.spi
-            .transfer(&mut transfer)
+            .read(words)
             .map_err(|_| embedded_hal::spi::ErrorKind::Other)?;
         Ok(())
     }
 
     fn write(&mut self, words: &[u8]) -> Result<(), Self::Error> {
-        let mut transfer = spidev::SpidevTransfer::write(words);
         self.spi
-            .transfer(&mut transfer)
+            .write(words)
             .map_err(|_| embedded_hal::spi::ErrorKind::Other)?;
         Ok(())
     }
 
     fn transfer(&mut self, read: &mut [u8], write: &[u8]) -> Result<(), Self::Error> {
         assert_eq!(read.len(), write.len());
-        let mut transfer = spidev::SpidevTransfer::read_write(write, read);
         self.spi
-            .transfer(&mut transfer)
+            .transfer(read, write)
             .map_err(|_| embedded_hal::spi::ErrorKind::Other)?;
         Ok(())
     }
 
     fn transfer_in_place(&mut self, words: &mut [u8]) -> Result<(), Self::Error> {
         let mut rx_buf = vec![0; words.len()];
-        let mut transfer = spidev::SpidevTransfer::read_write(words, &mut rx_buf);
         self.spi
-            .transfer(&mut transfer)
+            .transfer(&mut rx_buf, words)
             .map_err(|_| embedded_hal::spi::ErrorKind::Other)?;
         words.copy_from_slice(&rx_buf);
         Ok(())
     }
 
     fn flush(&mut self) -> Result<(), Self::Error> {
-        self.spi
-            .flush()
-            .map_err(|_| embedded_hal::spi::ErrorKind::Other)?;
-
         Ok(())
     }
 }
 
-macro_rules! gpio_strip {
-    ($file:expr => $fun:ident) => {
-        pub fn $fun() -> std::io::Result<Ws2812<SpiBus>> {
-            let dev = SpiBus::open($file)?;
-            Ok(Ws2812::new(dev))
-        }
-    };
+pub fn gpio_10() -> std::io::Result<Ws2812<SpiBus>> {
+    let dev = SpiBus::open(Bus::Spi0)?;
+    Ok(Ws2812::new(dev))
 }
-gpio_strip!("/dev/spidev0.1" => gpio_10);
-gpio_strip!("/dev/spidev1.0" => gpio_18);
+pub fn gpio_18() -> std::io::Result<Ws2812<SpiBus>> {
+    let dev = SpiBus::open(Bus::Spi1)?;
+    Ok(Ws2812::new(dev))
+}
