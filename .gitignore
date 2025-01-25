@@ -1,4 +1,4 @@
 /target
 /.direnv
 
-nt_persist.json
+nt_persist*

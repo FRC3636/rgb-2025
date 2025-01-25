@@ -1,8 +1,11 @@
-use std::{net::{Ipv4Addr, SocketAddrV4}, sync::{Arc, Mutex}};
+use std::{
+    net::SocketAddrV4,
+    sync::{Arc, Mutex},
+};
 
 use async_compat::Compat;
-use futures::{select, FutureExt};
-use network_tables::{v4::{Client, Config, Type}, Value};
+use futures::{FutureExt, select};
+use network_tables::v4::{Client, Config};
 
 pub async fn setup_nt_client() -> Result<Client, network_tables::Error> {
     let client = Client::try_new_w_config(
