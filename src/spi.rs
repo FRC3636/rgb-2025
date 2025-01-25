@@ -11,8 +11,8 @@ impl SpiBus {
         let spi = Spi::new(
             bus,
             rpi_embedded::spi::SlaveSelect::Ss0,
-            2_000_000,
-            rpi_embedded::spi::Mode::Mode1,
+            3_800_000,
+            rpi_embedded::spi::Mode::Mode0,
         )
         .map_err(|e| match e {
             rpi_embedded::spi::Error::Io(error) => error,

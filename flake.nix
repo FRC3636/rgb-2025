@@ -9,8 +9,15 @@
       let pkgs = nixpkgs.legacyPackages.${system};
       in {
         devShell = pkgs.mkShell {
-          buildInputs =
-            [ pkgs.pkgsCross.aarch64-multiplatform.buildPackages.gcc ];
+          buildInputs = with pkgs;
+            [
+              pkgsCross.aarch64-multiplatform.buildPackages.gcc
+
+              cmake
+              libcxx
+
+              pkg-config
+            ];
         };
       });
 }

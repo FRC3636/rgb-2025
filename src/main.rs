@@ -6,14 +6,20 @@ use smart_leds::{RGB8, SmartLedsWrite};
 
 mod spi;
 mod strips;
+mod network_tables;
+mod shaders;
 
 fn main() {
     let mut strip = spi::gpio_10().unwrap();
     println!("Got Strip!!!");
-    let shader = color::<FragThree>(Srgb::new(255, 0,255).into_linear());
 
+    let voltage = network_tables::start_nt_daemon_task();
+
+    
     let start_instant = Instant::now();
     loop {
+        let shader = shaders::battery_indicator(*voltage.lock().unwrap());
+
         let dt = start_instant.elapsed().as_secs_f64();
         let colors = strips::test_strip()
             .map(|point| {
