@@ -6,7 +6,9 @@ upload ip:
     @echo "Killing existing rgb-2025 on {{ip}}"
     ssh {{ip}} "sudo pkill rgb-2025 || true"
     @echo "Uploading to {{ip}}"
-    scp target/aarch64-unknown-linux-gnu/release/rgb-2025 {{ip}}:~/rgb-2025
+    scp target/aarch64-unknown-linux-gnu/release/rgb-2025 {{ip}}:~/rgb-2025-unwrapped
+    scp rgb-2025-wrapper.sh {{ip}}:~/rgb-2025
+    ssh {{ip}} "chmod +x ~/rgb-2025"
 deploy ip:
     just upload {{ip}}
     @echo "Running rgb-2025 remotely on {{ip}}"

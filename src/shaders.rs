@@ -1,6 +1,6 @@
 use palette::LinSrgb;
 use shark::shader::{
-    primitives::{checkerboard, color, mix, off}, FragOne, FragThree, IntoShader, Shader, ShaderExt
+    primitives::{checkerboard, color, mix, off, time_rainbow}, FragOne, FragThree, IntoShader, Shader, ShaderExt
 };
 
 fn slide_over_time<S: Shader<FragOne>>(shader: S) -> impl Shader<FragOne> {
@@ -32,15 +32,15 @@ pub fn battery_indicator(voltage: f64) -> impl Shader<FragThree> {
         low_voltage_color,
         (12.0 - voltage) / 12.0,
     );
-    let inverted_color = mix(mix(
-        high_voltage_color,
-        low_voltage_color,
-        (12.0 - voltage) / 12.0,
-    ), off(), 0.8);
+    // let inverted_color = mix(mix(
+    //     high_voltage_color,
+    //     low_voltage_color,
+    //     (12.0 - voltage) / 12.0,
+    // ), off(), 0.8);
 
     conveyor(
         color,
-        inverted_color,
+        time_rainbow().scale_time(100.0),
         0.1,
         0.2,
     )

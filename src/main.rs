@@ -13,7 +13,7 @@ mod shaders;
 mod spi;
 mod strips;
 
-const DESIRED_FPS: f64 = 60.0;
+const DESIRED_FPS: f64 = 320.0;
 const SLEEP_DURATION: Duration = Duration::from_millis((1.0 / DESIRED_FPS * 1000.0) as u64);
 
 fn main() {
