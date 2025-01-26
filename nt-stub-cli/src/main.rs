@@ -1,4 +1,7 @@
-use std::{thread::sleep, time::{Duration, Instant}};
+use std::{
+    thread::sleep,
+    time::{Duration, Instant},
+};
 
 use clap::{Parser, Subcommand};
 use lagan::{Instance, client::Client, prelude::ValueFlags, server::Server};

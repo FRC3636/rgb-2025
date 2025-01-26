@@ -1,6 +1,7 @@
-use palette::LinSrgb;
+use palette::{IntoColor, LinSrgb};
 use shark::shader::{
-    primitives::{checkerboard, color, mix, off, time_rainbow}, FragOne, FragThree, IntoShader, Shader, ShaderExt
+    FragOne, FragThree, Fragment, IntoShader, Shader, ShaderExt,
+    primitives::{checkerboard, color, memoize, time_rainbow},
 };
 
 fn slide_over_time<S: Shader<FragOne>>(shader: S) -> impl Shader<FragOne> {
@@ -23,27 +24,21 @@ fn conveyor<S1: Shader<FragOne>, S2: Shader<FragOne>>(
     slide_over_time(checkerboard(shader1, shader2, section_len)).scale_time(speed)
 }
 
+fn to_linsrgb<F: Fragment, S: Shader<F>>(shader: S) -> impl Shader<F, Output = LinSrgb<f64>> {
+    (move |frag: F| shader.shade(frag).into_color()).into_shader()
+}
+
 pub fn battery_indicator(voltage: f64) -> impl Shader<FragThree> {
     let low_voltage_color = color(LinSrgb::new(1.0, 0.03, 0.01));
-    let high_voltage_color = color(LinSrgb::new(0.03, 1.0, 0.04));
 
-    let color = mix(
-        high_voltage_color,
-        low_voltage_color,
-        (12.0 - voltage) / 12.0,
-    );
-    // let inverted_color = mix(mix(
-    //     high_voltage_color,
-    //     low_voltage_color,
-    //     (12.0 - voltage) / 12.0,
-    // ), off(), 0.8);
+    let color = low_voltage_color.rotate_hue(voltage / 12.0 * 90.0);
 
-    conveyor(
-        color,
-        time_rainbow().scale_time(100.0),
-        0.1,
-        0.2,
-    )
-    .extrude()
-    .extrude()
+    // memoize(
+    to_linsrgb(conveyor(color, time_rainbow().scale_time(100.0), 0.3, 0.5))
+        //     Some(0.04),
+        //     true,
+        // )
+        .volume_blur(0.1, 12)
+        .extrude()
+        .extrude()
 }

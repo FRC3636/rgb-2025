@@ -18,9 +18,11 @@ const SLEEP_DURATION: Duration = Duration::from_millis((1.0 / DESIRED_FPS * 1000
 
 fn main() {
     let voltage = network_tables::start_nt_daemon_task();
+    let mut last_voltage = *voltage.lock().unwrap();
 
     let start_instant = Instant::now();
 
+    let mut shader = shaders::battery_indicator(*voltage.lock().unwrap());
     let points = strips::test_strip().collect::<Vec<_>>();
     let colors = Arc::new(Mutex::new(vec![RGB8::default(); points.len()]));
     let barrier = Arc::new(Barrier::new(2));
@@ -40,7 +42,13 @@ fn main() {
     });
 
     loop {
-        let shader = shaders::battery_indicator(*voltage.lock().unwrap());
+        let voltage = voltage.lock().unwrap();
+        if *voltage != last_voltage {
+            last_voltage = *voltage;
+            shader = shaders::battery_indicator(*voltage);
+        }
+        drop(voltage);
+
         let loop_start = Instant::now();
 
         let dt = start_instant.elapsed().as_secs_f64();

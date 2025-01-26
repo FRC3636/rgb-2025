@@ -1064,6 +1064,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1261fe7e33c73b354eab43b1273a57c8f967d0391e80353e51f764ac02cf6775"
 
 [[package]]
+name = "ordered-float"
+version = "4.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7bb71e1b3fa6ca1c61f383464aaf2bb0e2f8e772a1f01d486832464de363b951"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
 name = "palette"
 version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1457,10 +1466,11 @@ dependencies = [
 [[package]]
 name = "shark"
 version = "0.1.0"
-source = "git+https://github.com/frc3636/shark#58ca4c550c2b1fc617f76a45b387b81231cde865"
+source = "git+https://github.com/frc3636/shark#ebaf1855e467909a458c35326ac619a416f86bf4"
 dependencies = [
  "fastrand",
  "num",
+ "ordered-float",
  "palette",
 ]
 
