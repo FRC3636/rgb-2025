@@ -3,6 +3,15 @@
 version = 4
 
 [[package]]
+name = "aarc"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f43bb13fcadecc8e69cf89529e4a9ba701ce9b5c2682603b3af7a7f7e7ed0a5a"
+dependencies = [
+ "fast-smr",
+]
+
+[[package]]
 name = "addr2line"
 version = "0.24.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -489,6 +498,12 @@ dependencies = [
  "event-listener",
  "pin-project-lite",
 ]
+
+[[package]]
+name = "fast-smr"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "61eeb63a0bb07980704258c3e31c217978c26f553ce9d03738ef5988c661c4db"
 
 [[package]]
 name = "fast-srgb8"
@@ -1322,6 +1337,7 @@ dependencies = [
 name = "rgb-2025"
 version = "0.1.0"
 dependencies = [
+ "aarc",
  "async-compat",
  "embedded-hal",
  "futures",
@@ -1466,7 +1482,7 @@ dependencies = [
 [[package]]
 name = "shark"
 version = "0.1.0"
-source = "git+https://github.com/frc3636/shark#ebaf1855e467909a458c35326ac619a416f86bf4"
+source = "git+https://github.com/frc3636/shark#977e41b996868c3c59bb5110f7c2e8660cf35949"
 dependencies = [
  "fastrand",
  "num",

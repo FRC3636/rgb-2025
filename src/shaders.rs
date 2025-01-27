@@ -1,8 +1,30 @@
 use palette::{IntoColor, LinSrgb};
 use shark::shader::{
-    FragOne, FragThree, Fragment, IntoShader, Shader, ShaderExt,
-    primitives::{checkerboard, color, memoize, time_rainbow},
+    primitives::{checkerboard, color, off, time_rainbow}, FragOne, FragThree, Fragment, IntoShader, Shader, ShaderExt
 };
+
+pub fn to_linsrgb<F: Fragment, S: Shader<F>>(shader: S) -> impl Shader<F, Output = LinSrgb<f64>> {
+    (move |frag: F| shader.shade(frag).into_color()).into_shader()
+}
+
+#[derive(Debug)]
+pub struct ArcShader<F: Fragment, S: Shader<F>>(std::sync::Arc<S>, std::marker::PhantomData<F>);
+impl<F: Fragment, S: Shader<F>> Clone for ArcShader<F, S> {
+    fn clone(&self) -> Self {
+        Self(self.0.clone(), std::marker::PhantomData)
+    }
+}
+impl<F: Fragment, S: Shader<F>> Shader<F> for ArcShader<F, S> {
+    type Output = S::Output;
+
+    fn shade(&self, frag: F) -> Self::Output {
+        self.0.shade(frag)
+    }
+}
+
+pub fn arc_shader<F: Fragment, S: Shader<F>>(shader: S) -> ArcShader<F, S> {
+    ArcShader(std::sync::Arc::new(shader), std::marker::PhantomData)
+}
 
 fn slide_over_time<S: Shader<FragOne>>(shader: S) -> impl Shader<FragOne> {
     (move |frag: FragOne| {
@@ -24,10 +46,6 @@ fn conveyor<S1: Shader<FragOne>, S2: Shader<FragOne>>(
     slide_over_time(checkerboard(shader1, shader2, section_len)).scale_time(speed)
 }
 
-fn to_linsrgb<F: Fragment, S: Shader<F>>(shader: S) -> impl Shader<F, Output = LinSrgb<f64>> {
-    (move |frag: F| shader.shade(frag).into_color()).into_shader()
-}
-
 pub fn battery_indicator(voltage: f64) -> impl Shader<FragThree> {
     let low_voltage_color = color(LinSrgb::new(1.0, 0.03, 0.01));
 
@@ -39,6 +57,14 @@ pub fn battery_indicator(voltage: f64) -> impl Shader<FragThree> {
         //     true,
         // )
         .volume_blur(0.1, 12)
+        .extrude()
+        .extrude()
+}
+
+pub fn flowy_rainbow() -> impl Shader<FragThree> {
+    let rainbow = || time_rainbow().scale_time(40.0);
+    to_linsrgb(conveyor(rainbow(), rainbow().mix(off(), 0.7), 0.3, 0.4))
+        .volume_blur(0.1, 10)
         .extrude()
         .extrude()
 }
