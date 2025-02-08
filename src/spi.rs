@@ -1,4 +1,4 @@
-use rpi_embedded::spi::{Bus, Spi};
+use rppal::spi::{Bus, Spi};
 use std::io;
 use ws2812_spi::hosted::Ws2812;
 
@@ -7,15 +7,15 @@ pub struct SpiBus {
     spi: Spi,
 }
 impl SpiBus {
-    pub fn open(bus: rpi_embedded::spi::Bus) -> io::Result<Self> {
+    pub fn open(bus: rppal::spi::Bus) -> io::Result<Self> {
         let spi = Spi::new(
             bus,
-            rpi_embedded::spi::SlaveSelect::Ss0,
+            rppal::spi::SlaveSelect::Ss0,
             3_800_000,
-            rpi_embedded::spi::Mode::Mode0,
+            rppal::spi::Mode::Mode0,
         )
         .map_err(|e| match e {
-            rpi_embedded::spi::Error::Io(error) => error,
+            rppal::spi::Error::Io(error) => error,
             _ => io::Error::new(io::ErrorKind::Other, "SPI creation error"),
         })?;
 

@@ -12,9 +12,8 @@ use shark::{
     shader::{FragThree, Shader},
 };
 use smart_leds::{RGB8, SmartLedsWrite};
-use ws2812_spi::hosted::Ws2812;
 
-use crate::{shaders::to_linsrgb, spi};
+use crate::shaders::to_linsrgb;
 
 struct RenderCtx {
     shader: Arc<dyn Shader<FragThree, Output = LinSrgb<f64>>>,
@@ -33,7 +32,13 @@ pub struct Renderer {
     worker_output_colors_receiver: Receiver<Vec<(usize, RGB8)>>,
 }
 impl Renderer {
-    pub fn new(num_workers: usize, mut strip: Ws2812<spi::SpiBus>) -> Self {
+    pub fn new<S: SmartLedsWrite<Color = RGB8> + Send + 'static>(
+        num_workers: usize,
+        mut strip: S,
+    ) -> Self
+    where
+        S::Error: std::fmt::Debug,
+    {
         let spi_barrier = Arc::new(Barrier::new(2));
         let colors = Arc::new(Mutex::new(vec![]));
 
