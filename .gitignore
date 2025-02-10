@@ -2,3 +2,4 @@
 /.direnv
 
 nt_persist*
+imu_log.csv

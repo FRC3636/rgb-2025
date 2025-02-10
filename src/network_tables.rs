@@ -1,5 +1,5 @@
 use std::{
-    net::SocketAddrV4,
+    net::{SocketAddrV4, SocketAddrV6},
     sync::{Arc, Mutex},
 };
 
@@ -19,13 +19,22 @@ pub async fn setup_nt_client() -> Result<Client, network_tables::Error> {
     Ok(client)
 }
 
-pub fn start_nt_daemon_task() -> Arc<Mutex<f64>> {
+pub struct NtReactives {
+    pub voltage: Arc<Mutex<f64>>,
+    pub robot_pos: Arc<Mutex<[f64; 3]>>,
+}
+
+pub fn start_nt_daemon_task() -> NtReactives {
     let voltage = Arc::new(Mutex::new(0.0));
+    let robot_pos = Arc::new(Mutex::new([0.0; 3]));
+
     let voltage_clone = voltage.clone();
+    let robot_pos_clone = robot_pos.clone();
     std::thread::spawn(move || {
         smol::block_on(Compat::new(async {
             let client = setup_nt_client().await.unwrap();
             let mut voltage_sub = client.subscribe(&["/battery_voltage"]).await.unwrap();
+            let mut pos_sub = client.subscribe(&["/robot_pos"]).await.unwrap();
             loop {
                 select! {
                     data = voltage_sub.next().fuse() => {
@@ -33,9 +42,15 @@ pub fn start_nt_daemon_task() -> Arc<Mutex<f64>> {
                         let mut lock = voltage_clone.lock().unwrap();
                         *lock = value;
                     }
+                    data = pos_sub.next().fuse() => {
+                        let value = data.unwrap().data.as_array().unwrap().iter().map(|v| v.as_f64().unwrap()).collect::<Vec<_>>();
+                        let mut lock = robot_pos_clone.lock().unwrap();
+                        *lock = [value[0], value[1], value[2]];
+                    }
                 }
             }
         }))
     });
-    voltage
+
+    NtReactives { voltage, robot_pos }
 }

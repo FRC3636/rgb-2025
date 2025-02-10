@@ -1,6 +1,7 @@
 pub mod atoms;
 pub mod utils;
 pub mod pride;
+pub mod field_relative;
 
 use palette::LinSrgb;
 use shark::shader::{
@@ -10,6 +11,7 @@ use shark::shader::{
 pub use atoms::*;
 pub use utils::*;
 pub use pride::*;
+pub use field_relative::*;
 
 pub trait ShaderExt2<F: Fragment>: Shader<F> + Sized {
     fn to_linsrgb(self) -> impl Shader<F, Output = LinSrgb<f64>> {

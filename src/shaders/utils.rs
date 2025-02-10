@@ -1,4 +1,4 @@
-use palette::{IntoColor, LinSrgb, Srgb, rgb::channels::Abgr};
+use palette::{rgb::channels::{Abgr, Argb}, IntoColor, LinSrgb, Srgb};
 use shark::shader::{FragOne, Fragment, IntoShader, Shader, primitives::color};
 
 pub fn to_linsrgb<F: Fragment, S: Shader<F>>(shader: S) -> impl Shader<F, Output = LinSrgb<f64>> {
@@ -39,6 +39,6 @@ pub fn arc_shader<F: Fragment, S: Shader<F>>(shader: S) -> ArcShader<F, S> {
 }
 
 pub fn hex(hex: u32) -> Box<dyn Shader<FragOne, Output = LinSrgb<f64>>> {
-    let rgb: Srgb<u8> = Srgb::from_u32::<Abgr>(hex);
+    let rgb: Srgb<u8> = Srgb::from_u32::<Argb>(hex);
     Box::new(color(rgb.into_linear()))
 }

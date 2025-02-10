@@ -17,7 +17,23 @@
               libcxx
 
               pkg-config
+
+              openssl
+
+               # GUI libs
+              libxkbcommon
+              libGL
+              fontconfig
+
+              # wayland libraries
+              wayland
             ];
+          LD_LIBRARY_PATH = with pkgs; lib.makeLibraryPath [
+            wayland
+            libxkbcommon
+            libGL
+            fontconfig
+          ];
         };
       });
 }

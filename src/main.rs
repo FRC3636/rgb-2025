@@ -3,6 +3,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+use network_tables::NtReactives;
 use shaders::ShaderExt2;
 use shark::shader::ShaderExt;
 
@@ -16,21 +17,22 @@ const DESIRED_FPS: f64 = 320.0;
 const SLEEP_DURATION: Duration = Duration::from_millis((1.0 / DESIRED_FPS * 1000.0) as u64);
 
 fn main() {
-    // let voltage = network_tables::start_nt_daemon_task();
+    let NtReactives { voltage: _voltage, robot_pos } = network_tables::start_nt_daemon_task();
     // let mut last_voltage = *voltage.lock().unwrap();
 
     let start_instant = Instant::now();
 
-    let mut shader =
+    let shader =
         shaders::slide_over_time(shaders::random_pride_flag().scale_position(1.0 / 0.5))
             .scale_time(0.3)
             .extrude()
             .extrude()
             .arc();
+    // let shader = shaders::alliance().arc();
 
     let points = strips::test_strip().collect::<Vec<_>>();
 
-    let pin_10_renderer = renderer::Renderer::new(8, spi::gpio_10().unwrap());
+    let pin_10_renderer = renderer::Renderer::new(4, spi::gpio_10().unwrap());
 
     loop {
         let loop_start = Instant::now();
@@ -44,7 +46,18 @@ fn main() {
 
         let time = start_instant.elapsed().as_secs_f64();
 
-        pin_10_renderer.render(shader.clone(), points.clone(), time);
+        let offset_points = points
+            .iter()
+            .copied()
+            .map(|mut point| {
+                point.x += robot_pos.lock().unwrap()[0];
+                point.y += robot_pos.lock().unwrap()[1];
+                point.z += robot_pos.lock().unwrap()[2];
+                point
+            })
+            .collect::<Vec<_>>();
+
+        pin_10_renderer.render(shader.clone(), offset_points, time);
 
         let sleep_dur = SLEEP_DURATION.saturating_sub(loop_start.elapsed());
         print!(
