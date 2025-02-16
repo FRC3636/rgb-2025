@@ -18,7 +18,7 @@ const DESIRED_FPS: f64 = 320.0;
 const SLEEP_DURATION: Duration = Duration::from_millis((1.0 / DESIRED_FPS * 1000.0) as u64);
 
 fn main() {
-    unsafe { drivers::dma_pwm::timer_read_test() };
+    unsafe { drivers::dma_pwm::timer_read_test(20) };
 
     // let NtReactives { voltage: _voltage, robot_pos } = network_tables::start_nt_daemon_task();
     // // let mut last_voltage = *voltage.lock().unwrap();
