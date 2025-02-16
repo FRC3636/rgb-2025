@@ -1,7 +1,5 @@
 //! Dead-simple mailbox implementation adapted from https://github.com/raspberrypi/userland/blob/master/host_applications/linux/apps/hello_pi/hello_fft/mailbox.c
 
-use std::{fs::File, os::fd::AsRawFd};
-
 use libc::{open, O_RDWR, O_SYNC};
 
 use crate::drivers::dma_pwm::PAGE_SIZE;

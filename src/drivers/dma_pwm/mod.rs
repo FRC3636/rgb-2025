@@ -1,16 +1,16 @@
-use std::{ffi::c_void, fs::File, os::fd::AsRawFd, thread::sleep, time::Duration};
+use std::{ffi::c_void, thread::sleep, time::Duration, u32};
 
 use libc::{mmap, open, MAP_SHARED, O_RDWR, O_SYNC, PROT_READ, PROT_WRITE};
 use mailbox::open_mailbox;
 
 mod mailbox;
 
-const PHYISCAL_PERIPHERAL_BASE: usize = 0x3F00_0000;
+const PHYISCAL_PERIPHERAL_BASE: usize = 0xFE000000;
 const BUS_PERIPHERAL_BASE: usize = 0x7E00_0000;
 
 const DMA_OFFSET: usize = 0x7000;
 
-const DMA_CHANNEL: u32 = 6;
+const DMA_CHANNEL: u32 = 3;
 
 const PAGE_SIZE: usize = 0x1000;
 
@@ -21,12 +21,13 @@ const DMA_CHANNEL_ABORT: u32 = 1 << 30;
 const DMA_CHANNEL_RESET: u32 = 1 << 31;
 const DMA_INTERRUPT_STATUS: u32 = 1 << 2;
 const DMA_END_FLAG: u32 = 1 << 1;
-const DMA_DISDEBUG: u32 = 1 << 28;
-const DMA_WAIT_ON_WRITES: u32 = 1 << 28;
+const DMA_DISDEBUG: u32 = 1 << 29;
+const DMA_WAIT_ON_WRITES: u32 = 1 << 6;
 const DMA_ACTIVE: u32 = 1 << 0;
 
 /// DMA control block linked list element
 #[repr(C)]
+#[derive(Debug, Clone, Copy)]
 struct DmaControlBlock {
     /// Transfer information
     ti: u32,
@@ -40,6 +41,7 @@ struct DmaControlBlock {
     stride: u32,
     /// Next control block address
     nextconbk: u32,
+    padding: [u32; 2],
 }
 
 /// Handle to a allocated memory fit for DMA transfers
@@ -75,6 +77,7 @@ impl DmaMemoryAllocationHandle {
 
     unsafe fn _free(&mut self) {
         unsafe {
+            mailbox::unmap_mem(self.virtual_memory_address, self.size);
             mailbox::unlock(self.mailbox_fd, self.mailbox_handle);
             mailbox::free(self.mailbox_fd, self.mailbox_handle);
         }
@@ -107,10 +110,11 @@ const fn bus_addr_to_phys_addr(bus_addr: u32) -> u32 {
 
 unsafe fn map_peripheral(offset: usize, size: usize) -> *mut u8 {
     let memory = unsafe { open(c"/dev/mem".as_ptr(), O_RDWR | O_SYNC) };
-    if memory == -1 {
+    if memory < 0 {
         panic!("Failed to open /dev/mem");
     }
 
+    dbg!((PHYISCAL_PERIPHERAL_BASE + offset) as i64);
     let result_ptr = unsafe {
         mmap(
             std::ptr::null_mut(),
@@ -155,6 +159,7 @@ const unsafe fn nth_cb_bus_address(
 pub unsafe fn timer_read_test() {
     unsafe {
         let dma_base = map_peripheral(DMA_OFFSET, PAGE_SIZE);
+
         let mapped_dma_reg: *mut DmaControlRegister =
             dma_base.offset(DMA_CHANNEL as isize * 0x100).cast();
         sleep(Duration::from_micros(100));
@@ -179,10 +184,10 @@ pub unsafe fn timer_read_test() {
                     as u32,
                 txfr_len: std::mem::size_of::<u32>() as _,
                 stride: 0,
-                nextconbk: nth_cb_bus_address(&dma_cbs, i + 1) as _,
+                nextconbk: if i < 19 { nth_cb_bus_address(&dma_cbs, i + 1) as _ } else { 0 },
+                padding: [0, 0],
             });
         }
-        sleep(Duration::from_micros(100));
 
         // Abort and reset DMA channel
         (&raw mut (*mapped_dma_reg).cs).write_volatile(DMA_CHANNEL_ABORT);
@@ -195,7 +200,7 @@ pub unsafe fn timer_read_test() {
         // Enable DMA channel
         (&raw mut (*mapped_dma_reg).cb_addr).write_volatile(dma_cbs.bus_memory_address as u32);
         (&raw mut (*mapped_dma_reg).cs).write_volatile((8 << 16) | (8 << 20) | DMA_DISDEBUG);
-        (&raw mut (*mapped_dma_reg).cs).write_volatile(DMA_ACTIVE | DMA_WAIT_ON_WRITES);
+        (&raw mut (*mapped_dma_reg).cs).write_volatile((&raw mut (*mapped_dma_reg).cs).read_volatile() | DMA_ACTIVE | DMA_WAIT_ON_WRITES);
 
         sleep(Duration::from_micros(100));
 
@@ -205,12 +210,12 @@ pub unsafe fn timer_read_test() {
             20,
         ));
 
-        println!("{:?}", results);
+        println!("{:#?}", results);
 
         (&raw mut (*mapped_dma_reg).cs).write_volatile(DMA_CHANNEL_ABORT);
         sleep(Duration::from_micros(100));
-        (&raw mut (*mapped_dma_reg).cs).write_volatile(!DMA_ACTIVE);
-        (&raw mut (*mapped_dma_reg).cs).write_volatile((*mapped_dma_reg).cs | DMA_CHANNEL_RESET);
+        (&raw mut (*mapped_dma_reg).cs).write_volatile((&raw mut (*mapped_dma_reg).cs).read_volatile() & !DMA_ACTIVE);
+        (&raw mut (*mapped_dma_reg).cs).write_volatile((&raw mut (*mapped_dma_reg).cs).read_volatile() | DMA_CHANNEL_RESET);
         sleep(Duration::from_micros(100));
     }
 }
