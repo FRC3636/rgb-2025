@@ -14,7 +14,7 @@ const GPIO_OFFSET: usize = 0x20_0000;
 const CM_OFFSET: usize = 0x10_1000;
 const SYSTEM_TIMER_OFFSET: usize = 0x3000;
 
-const DMA_CHANNEL: u32 = 3;
+const DMA_CHANNEL: u32 = 5;
 
 const PAGE_SIZE: usize = 0x1000;
 
@@ -47,10 +47,11 @@ const CM_ENABLE: u32 = 1 << 4;
 const CM_BUSY: u32 = 1 << 7;
 
 const PWM_DMA_ENABLE: u32 = 1 << 31;
-const PWM_CLEAR_FIFO: u32 = 1 << 6;
+const PWM_CLEAR_FIFO1: u32 = 1 << 6;
 const PWM_USE_FIFO1: u32 = 1 << 5;
 const PWM_ENABLE_PWEN1: u32 = 1 << 0;
 const PWM_MODE1_ENABLE_SERIALIZER: u32 = 1 << 1;
+const PWM_MSEN1: u32 = 1 << 7;
 
 /// DMA control block linked list element
 #[repr(C)]
@@ -136,12 +137,18 @@ struct PwmControlRegister {
     sta: u32,
     /// PWM DMA configuration
     dmac: u32,
+
+    padding0: u32,
+
     /// PWM Channel 1 range
     rng1: u32,
     /// PWM Channel 1 data (used if CTL USEFi = 0)
     dat1: u32,
     /// PWM FIFO input (used if CTL USEFi = 1)
     fif1: u32,
+    
+    padding1: u32,
+    
     /// PWM Channel 2 range
     rng2: u32,
     /// PWM Channel 2 data (used if CTL USEFi = 0)
@@ -295,11 +302,12 @@ unsafe fn start_pwm(pwm_ctrl: *mut PwmControlRegister) {
         // Reset PWM
         (&raw mut (*pwm_ctrl).ctl).write_volatile(0);
         sleep(Duration::from_micros(10));
-        (&raw mut (*pwm_ctrl).sta).write_volatile(u32::MAX);
+        (&raw mut (*pwm_ctrl).sta).write_volatile(0);
         sleep(Duration::from_micros(10));
 
         let target_micros = 100;
-        let cycles = PLLD_ACTUAL_FREQ / 1_000_000 * target_micros;
+        let cycles = (PLLD_ACTUAL_FREQ / 1_000_000) * target_micros;
+        dbg!(cycles);
 
         // Set range
         (&raw mut (*pwm_ctrl).rng1).write_volatile(cycles);
@@ -309,12 +317,12 @@ unsafe fn start_pwm(pwm_ctrl: *mut PwmControlRegister) {
         sleep(Duration::from_micros(10));
 
         // Clear FIF1
-        (&raw mut (*pwm_ctrl).ctl).write_volatile(PWM_CLEAR_FIFO);
+        (&raw mut (*pwm_ctrl).ctl).write_volatile(PWM_CLEAR_FIFO1);
         sleep(Duration::from_micros(10));
 
         // Enable PWM and use FIFO
         (&raw mut (*pwm_ctrl).ctl)
-            .write_volatile(PWM_MODE1_ENABLE_SERIALIZER | PWM_USE_FIFO1 | PWM_ENABLE_PWEN1);
+            .write_volatile(PWM_USE_FIFO1 | PWM_ENABLE_PWEN1 | PWM_MSEN1);
     }
 }
 
@@ -346,8 +354,8 @@ pub unsafe fn timer_read_test(num_reads: usize) {
             DmaMemoryAllocationHandle::alloc(mailbox, num_reads * std::mem::size_of::<u32>());
         sleep(Duration::from_micros(100));
 
-        let dummy_data = 0u32;
         for i in 0..num_reads {
+            // Real read operation
             let cb = nth_cb_virtual_address(&dma_cbs, i * 2);
             cb.write_volatile(DmaControlBlock {
                 ti: DMA_NO_WIDE_BURSTS | DMA_WAIT_RESP,
@@ -364,18 +372,19 @@ pub unsafe fn timer_read_test(num_reads: usize) {
                 padding: [0, 0],
             });
 
+            // Dummy PWM write for timing 
             let cb = nth_cb_virtual_address(&dma_cbs, i * 2 + 1);
             cb.write_volatile(DmaControlBlock {
                 ti: DMA_NO_WIDE_BURSTS | DMA_WAIT_RESP | DMA_DEST_DREQ | (PWM0_DREQ << 16),
                 // system timer address
-                source_ad: &raw const dummy_data as _,
-                // copy to dma_ticks
-                dest_ad: (BUS_PERIPHERAL_BASE + PWM_OFFSET + 0x20) as _,
+                source_ad: nth_cb_bus_address(&dma_cbs, 0) as _,
+                dest_ad: (BUS_PERIPHERAL_BASE + PWM_OFFSET + 0x18) as _,
                 txfr_len: std::mem::size_of::<u32>() as _,
                 stride: 0,
                 nextconbk: if i < num_reads - 1 {
                     nth_cb_bus_address(&dma_cbs, i * 2 + 2) as _
                 } else {
+                    dbg!(i, i * 2 + 2);
                     0
                 },
                 padding: [0, 0],
@@ -389,12 +398,12 @@ pub unsafe fn timer_read_test(num_reads: usize) {
         sleep(Duration::from_micros(100));
 
         start_dma(mapped_dma_reg, &dma_cbs);
-        sleep(Duration::from_micros(100));
+        sleep(Duration::from_micros(10000));
 
-        let mut results = [0u32; 20];
+        let mut results = vec![0u32; num_reads];
         results.copy_from_slice(std::slice::from_raw_parts(
             dma_ticks.virtual_memory_address.cast(),
-            20,
+            num_reads,
         ));
 
         println!("{:#?}", results);
