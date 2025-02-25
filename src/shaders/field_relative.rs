@@ -1,4 +1,4 @@
-use palette::{rgb::channels::Argb, LinSrgb};
+use palette::LinSrgb;
 use shark::shader::{primitives::color, FragThree, IntoShader, Shader};
 
 pub fn alliance() -> impl Shader<FragThree> {

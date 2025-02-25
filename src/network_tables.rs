@@ -1,5 +1,5 @@
 use std::{
-    net::{SocketAddrV4, SocketAddrV6},
+    net::SocketAddrV4,
     sync::{Arc, Mutex},
 };
 

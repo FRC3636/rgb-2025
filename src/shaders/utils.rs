@@ -1,4 +1,4 @@
-use palette::{rgb::channels::{Abgr, Argb}, IntoColor, LinSrgb, Srgb};
+use palette::{rgb::channels::Argb, IntoColor, LinSrgb, Srgb};
 use shark::shader::{FragOne, Fragment, IntoShader, Shader, primitives::color};
 
 pub fn to_linsrgb<F: Fragment, S: Shader<F>>(shader: S) -> impl Shader<F, Output = LinSrgb<f64>> {

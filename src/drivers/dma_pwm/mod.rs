@@ -46,6 +46,8 @@ const CM_KILL: u32 = 1 << 5;
 const CM_ENABLE: u32 = 1 << 4;
 const CM_BUSY: u32 = 1 << 7;
 
+const CM_PWM_CTL_OFFSET: u32 = 0xA0;
+
 const PWM_DMA_ENABLE: u32 = 1 << 31;
 const PWM_CLEAR_FIFO1: u32 = 1 << 6;
 const PWM_USE_FIFO1: u32 = 1 << 5;
@@ -146,9 +148,9 @@ struct PwmControlRegister {
     dat1: u32,
     /// PWM FIFO input (used if CTL USEFi = 1)
     fif1: u32,
-    
+
     padding1: u32,
-    
+
     /// PWM Channel 2 range
     rng2: u32,
     /// PWM Channel 2 data (used if CTL USEFi = 0)
@@ -201,6 +203,8 @@ unsafe fn map_peripheral(offset: usize, size: usize) -> *mut u8 {
         panic!("Failed to open /dev/mem");
     }
 
+    dbg!(PHYISCAL_PERIPHERAL_BASE + offset);
+
     let result_ptr = unsafe {
         mmap(
             std::ptr::null_mut(),
@@ -244,11 +248,13 @@ const unsafe fn nth_cb_bus_address(
 
 unsafe fn enable_hardware_timer(cm_ctrl: *mut ClockManagerControlRegister) {
     unsafe {
+        dbg!(cm_ctrl);
+
+        // Kill clock
+        (&raw mut (*cm_ctrl).gp0_ctl).write_volatile(CM_PASSWORD | 0);
+        
         // Wait for clock to become not busy
-        while ((&raw mut (*cm_ctrl).gp0_ctl).read_volatile() & CM_BUSY) != 0 {
-            // Kill clock
-            (&raw mut (*cm_ctrl).gp0_ctl).write_volatile(CM_PASSWORD | CM_KILL);
-        }
+        while ((&raw mut (*cm_ctrl).gp0_ctl).read_volatile() & CM_BUSY) != 0 {}
 
         // Set clock source to PLLD
         (&raw mut (*cm_ctrl).gp0_ctl).write_volatile(CM_PASSWORD | CM_SOURCE_PLLD);
@@ -260,6 +266,8 @@ unsafe fn enable_hardware_timer(cm_ctrl: *mut ClockManagerControlRegister) {
         (&raw mut (*cm_ctrl).gp0_ctl).write_volatile(
             (&raw const (*cm_ctrl).gp0_div).read_volatile() | CM_PASSWORD | CM_ENABLE,
         );
+
+        println!("{:b} {:b}", (&raw mut (*cm_ctrl).gp0_ctl).read_volatile(), (&raw mut (*cm_ctrl).gp0_div).read_volatile())
     }
 }
 
@@ -307,7 +315,6 @@ unsafe fn start_pwm(pwm_ctrl: *mut PwmControlRegister) {
 
         let target_micros = 100;
         let cycles = (PLLD_ACTUAL_FREQ / 1_000_000) * target_micros;
-        dbg!(cycles);
 
         // Set range
         (&raw mut (*pwm_ctrl).rng1).write_volatile(cycles);
@@ -321,8 +328,7 @@ unsafe fn start_pwm(pwm_ctrl: *mut PwmControlRegister) {
         sleep(Duration::from_micros(10));
 
         // Enable PWM and use FIFO
-        (&raw mut (*pwm_ctrl).ctl)
-            .write_volatile(PWM_USE_FIFO1 | PWM_ENABLE_PWEN1 | PWM_MSEN1);
+        (&raw mut (*pwm_ctrl).ctl).write_volatile(PWM_USE_FIFO1 | PWM_ENABLE_PWEN1 | PWM_MSEN1);
     }
 }
 
@@ -331,16 +337,18 @@ pub unsafe fn timer_read_test(num_reads: usize) {
 
     unsafe {
         let dma_base = map_peripheral(DMA_OFFSET, PAGE_SIZE);
-
         let mapped_dma_reg: *mut DmaControlRegister =
             dma_base.offset(DMA_CHANNEL as isize * 0x100).cast();
 
         let mapped_pwm_reg: *mut PwmControlRegister =
             map_peripheral(PWM_OFFSET, size_of::<PwmControlRegister>()).cast();
+
         let mapped_sys_timer_reg: *mut SystemTimerControlRegister =
             map_peripheral(SYSTEM_TIMER_OFFSET, size_of::<SystemTimerControlRegister>()).cast();
+
+            let cm_base = map_peripheral(CM_OFFSET, PAGE_SIZE);
         let mapped_cm_reg: *mut ClockManagerControlRegister =
-            map_peripheral(CM_OFFSET, size_of::<ClockManagerControlRegister>()).cast();
+            cm_base.offset(CM_PWM_CTL_OFFSET as isize).cast();
 
         sleep(Duration::from_micros(100));
 
@@ -372,7 +380,7 @@ pub unsafe fn timer_read_test(num_reads: usize) {
                 padding: [0, 0],
             });
 
-            // Dummy PWM write for timing 
+            // Dummy PWM write for timing
             let cb = nth_cb_virtual_address(&dma_cbs, i * 2 + 1);
             cb.write_volatile(DmaControlBlock {
                 ti: DMA_NO_WIDE_BURSTS | DMA_WAIT_RESP | DMA_DEST_DREQ | (PWM0_DREQ << 16),
@@ -384,7 +392,6 @@ pub unsafe fn timer_read_test(num_reads: usize) {
                 nextconbk: if i < num_reads - 1 {
                     nth_cb_bus_address(&dma_cbs, i * 2 + 2) as _
                 } else {
-                    dbg!(i, i * 2 + 2);
                     0
                 },
                 padding: [0, 0],
@@ -398,7 +405,7 @@ pub unsafe fn timer_read_test(num_reads: usize) {
         sleep(Duration::from_micros(100));
 
         start_dma(mapped_dma_reg, &dma_cbs);
-        sleep(Duration::from_micros(10000));
+        sleep(Duration::from_micros(100));
 
         let mut results = vec![0u32; num_reads];
         results.copy_from_slice(std::slice::from_raw_parts(
