@@ -1,17 +1,20 @@
 pub mod atoms;
-pub mod utils;
-pub mod pride;
 pub mod field_relative;
+pub mod pride;
+pub mod utils;
 
 use palette::LinSrgb;
 use shark::shader::{
-    primitives::{color, off, time_rainbow}, FragOne, FragThree, Fragment, Shader, ShaderExt
+    FragOne, FragThree, Fragment, Shader, ShaderExt,
+    primitives::{color, off, time_rainbow},
 };
 
 pub use atoms::*;
-pub use utils::*;
-pub use pride::*;
 pub use field_relative::*;
+pub use pride::*;
+pub use utils::*;
+
+use crate::network_tables::CoralState;
 
 pub trait ShaderExt2<F: Fragment>: Shader<F> + Sized {
     fn to_linsrgb(self) -> impl Shader<F, Output = LinSrgb<f64>> {
@@ -20,7 +23,10 @@ pub trait ShaderExt2<F: Fragment>: Shader<F> + Sized {
     fn arc(self) -> ArcShader<F, Self> {
         arc_shader(self)
     }
-    fn boxed(this: Box<Self>) -> BoxShader<F, Self::Output> where Self: 'static {
+    fn boxed(this: Box<Self>) -> BoxShader<F, Self::Output>
+    where
+        Self: 'static,
+    {
         box_shader(this)
     }
 }
@@ -52,4 +58,22 @@ pub fn random_pride_flag() -> impl Shader<FragOne> {
     let index: usize = rand::random_range(0..num_flags);
     let flag = pride::FLAGS[index];
     box_shader(flag())
+}
+
+pub fn coral_state_indicator(state: CoralState) -> impl Shader<FragThree> {
+    match state {
+        CoralState::None => box_shader(Box::new(color(LinSrgb::new(0.0, 0.0, 0.0)))),
+        CoralState::Held | CoralState::Transit => box_shader(Box::new(
+            conveyor(
+                color(LinSrgb::new(0.0, 0.5, 0.0)),
+                time_rainbow().scale_time(100.0),
+                0.3,
+                0.5,
+            )
+            .to_linsrgb()
+            .volume_blur(0.1, 12),
+        )),
+    }
+    .extrude()
+    .extrude()
 }

@@ -4,7 +4,7 @@ use libc::{open, O_RDWR, O_SYNC};
 
 use crate::drivers::dma_pwm::PAGE_SIZE;
 
-const IOCTL_MBOX_PROPERTY: u64 = 0xC008_6400;
+const IOCTL_MBOX_PROPERTY: i32 = 0xC008_6400;
 
 pub type MailboxMemoryHandle = u32;
 
