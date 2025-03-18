@@ -10,8 +10,6 @@ use shark::shader::{
 };
 
 pub use atoms::*;
-pub use field_relative::*;
-pub use pride::*;
 pub use utils::*;
 
 use crate::network_tables::CoralState;
@@ -62,18 +60,29 @@ pub fn random_pride_flag() -> impl Shader<FragOne> {
 
 pub fn coral_state_indicator(state: CoralState) -> impl Shader<FragThree> {
     match state {
-        CoralState::None => box_shader(Box::new(color(LinSrgb::new(0.0, 0.0, 0.0)))),
-        CoralState::Held | CoralState::Transit => box_shader(Box::new(
+        CoralState::None => box_shader(Box::new(flowy_rainbow().to_linsrgb())),
+        CoralState::Held => box_shader(Box::new(
             conveyor(
-                color(LinSrgb::new(0.0, 0.5, 0.0)),
-                time_rainbow().scale_time(100.0),
+                color(LinSrgb::new(0.0, 1.0, 0.1)),
+                color(LinSrgb::new(0.2, 0.5, 0.6)),
                 0.3,
                 0.5,
             )
             .to_linsrgb()
-            .volume_blur(0.1, 12),
+            .volume_blur(0.1, 12)
+            .extrude()
+            .extrude(),
+        )),
+        CoralState::Transit => box_shader(Box::new(
+            conveyor(
+                color(LinSrgb::new(0.03, 1.0, 0.32)),
+                color(LinSrgb::new(1.0, 1.0, 1.0)),
+                0.1,
+                0.5,
+            )
+            .to_linsrgb()
+            .extrude()
+            .extrude(),
         )),
     }
-    .extrude()
-    .extrude()
 }

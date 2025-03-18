@@ -5,7 +5,7 @@ use std::{
 
 use network_tables::NtReactives;
 use palette::LinSrgb;
-use shaders::ShaderExt2;
+use shaders::{ShaderExt2, box_shader, coral_state_indicator, transition};
 use shark::shader::{ShaderExt, primitives::color};
 
 mod drivers;
@@ -18,54 +18,38 @@ const DESIRED_FPS: f64 = 101.0;
 const SLEEP_DURATION: Duration = Duration::from_millis((1.0 / DESIRED_FPS * 1000.0) as u64);
 
 fn main() {
-    // let NtReactives {
-    //     voltage: _voltage,
-    //     robot_pos,
-    //     coral_state,
-    // } = network_tables::start_nt_daemon_task();
-    // let mut last_coral_state = *coral_state.lock().unwrap();
+    let NtReactives {
+        voltage: _voltage,
+        robot_pos: _robot_pos,
+        coral_state,
+        coral_state_last_change,
+    } = network_tables::start_nt_daemon_task();
 
     let start_instant = Instant::now();
 
-    let mut underglow_shader = shaders::coral_state_indicator(network_tables::CoralState::Held).arc();
-
-    // let shader = color(LinSrgb::new(0.0, 1.0, 0.0)).arc();
+    let mut underglow_shader = box_shader(Box::new(
+        color(LinSrgb::new(0.0, 0.0, 0.0)).extrude().extrude(),
+    ))
+    .arc();
 
     let boxtube_points = strips::box_tube_to_intake().collect::<Vec<_>>();
-    let underglow_points = strips::underglow().collect::<Vec<_>>();
 
-    let pin_10_renderer = renderer::Renderer::new(1, drivers::spi::gpio_10().unwrap());
-    let pin_18_renderer = renderer::Renderer::new(1, drivers::spi::gpio_18().unwrap());
+    let pin_10_renderer = renderer::Renderer::new(2, drivers::spi::gpio_10().unwrap());
 
     loop {
         let loop_start = Instant::now();
 
-        // let coral_state = coral_state.lock().unwrap();
-        // if *coral_state != last_coral_state {
-        //     last_coral_state = *coral_state;
-        //     underglow_shader = shaders::coral_state_indicator(*coral_state).arc();
-        // }
-        // drop(coral_state);
+        underglow_shader = box_shader(Box::new(transition(
+            underglow_shader,
+            coral_state_indicator(*coral_state.lock().unwrap()).to_linsrgb(),
+            0.8,
+            *coral_state_last_change.read().unwrap(),
+        )))
+        .arc();
 
         let time = start_instant.elapsed().as_secs_f64();
 
-        // let offset_points = underglow_points
-        //     .iter()
-        //     .copied()
-        //     .map(|mut point| {
-        //         point.x += robot_pos.lock().unwrap()[0];
-        //         point.y += robot_pos.lock().unwrap()[1];
-        //         point.z += robot_pos.lock().unwrap()[2];
-        //         point
-        //     })
-        //     .collect::<Vec<_>>();
-
-        // pin_10_renderer.render(color(LinSrgb::new(1.0, 1.0, 1.0)), offset_points, time);
-        pin_10_renderer.render(
-            color(LinSrgb::new(1.0, 1.0, 1.0)),
-            boxtube_points.clone(),
-            time,
-        );
+        pin_10_renderer.render(underglow_shader.clone(), boxtube_points.clone(), time);
 
         let sleep_dur = SLEEP_DURATION.saturating_sub(loop_start.elapsed());
         print!(

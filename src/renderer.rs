@@ -1,7 +1,6 @@
 use std::{
     sync::{
-        Arc, Barrier, Mutex,
-        mpsc::{Receiver, Sender},
+        mpsc::{Receiver, Sender}, Arc, Barrier, Mutex
     },
     thread::spawn,
 };

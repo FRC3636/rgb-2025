@@ -1,6 +1,6 @@
 use std::{
     net::SocketAddrV4,
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex, RwLock},
 };
 
 use async_compat::Compat;
@@ -21,7 +21,7 @@ pub enum CoralState {
 pub async fn setup_nt_client() -> Client {
     loop {
         let Ok(client) = Client::try_new_w_config(
-            "10.36.36.2:5810".parse::<SocketAddrV4>().unwrap(),
+            "192.168.0.48:5810".parse::<SocketAddrV4>().unwrap(),
             Config {
                 ..Default::default()
             },
@@ -40,22 +40,27 @@ pub struct NtReactives {
     pub voltage: Arc<Mutex<f64>>,
     pub robot_pos: Arc<Mutex<[f64; 3]>>,
     pub coral_state: Arc<Mutex<CoralState>>,
+    pub coral_state_last_change: Arc<RwLock<std::time::Instant>>,
 }
 
 pub fn start_nt_daemon_task() -> NtReactives {
     let voltage = Arc::new(Mutex::new(0.0));
     let robot_pos = Arc::new(Mutex::new([0.0; 3]));
     let coral_state = Arc::new(Mutex::new(CoralState::None));
+    let coral_state_last_change = Arc::new(RwLock::new(std::time::Instant::now()));
 
     let voltage_clone = voltage.clone();
     let robot_pos_clone = robot_pos.clone();
     let coral_state_clone = coral_state.clone();
+    let coral_state_last_change_clone = coral_state_last_change.clone();
     std::thread::spawn(move || {
         smol::block_on(Compat::new(async {
             let client = setup_nt_client().await;
+
             let mut voltage_sub = client.subscribe(&["/battery_voltage"]).await.unwrap();
             let mut pos_sub = client.subscribe(&["/robot_pos"]).await.unwrap();
             let mut coral_state_sub = client.subscribe(&[CORAL_STATE_TOPIC]).await.unwrap();
+
             loop {
                 select! {
                     data = voltage_sub.next().fuse() => {
@@ -77,11 +82,14 @@ pub fn start_nt_daemon_task() -> NtReactives {
                             2 => CoralState::Transit,
                             _ => panic!("Invalid coral state"),
                         };
+
+                        let mut lock = coral_state_last_change_clone.write().unwrap();
+                        *lock = std::time::Instant::now();
                     }
                 }
             }
         }))
     });
 
-    NtReactives { voltage, robot_pos, coral_state }
+    NtReactives { voltage, robot_pos, coral_state, coral_state_last_change }
 }
