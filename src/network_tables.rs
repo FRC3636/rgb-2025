@@ -21,7 +21,7 @@ pub enum CoralState {
 pub async fn setup_nt_client() -> Client {
     loop {
         let Ok(client) = Client::try_new_w_config(
-            "192.168.0.48:5810".parse::<SocketAddrV4>().unwrap(),
+            "10.36.36.2:5810".parse::<SocketAddrV4>().unwrap(),
             Config {
                 ..Default::default()
             },
