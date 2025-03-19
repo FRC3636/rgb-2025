@@ -5,8 +5,9 @@ use std::{
 
 use network_tables::NtReactives;
 use palette::LinSrgb;
-use shaders::{ShaderExt2, box_shader, coral_state_indicator, transition};
+use shaders::{ShaderExt2, box_shader, boxtube_shader, transition};
 use shark::shader::{ShaderExt, primitives::color};
+use shrewnit::Seconds;
 
 mod drivers;
 mod network_tables;
@@ -19,10 +20,12 @@ const SLEEP_DURATION: Duration = Duration::from_millis((1.0 / DESIRED_FPS * 1000
 
 fn main() {
     let NtReactives {
-        voltage: _voltage,
-        robot_pos: _robot_pos,
         coral_state,
-        coral_state_last_change,
+
+        movement_state,
+        position_relative_to_align_target,
+
+        topics_last_changed,
     } = network_tables::start_nt_daemon_task();
 
     let start_instant = Instant::now();
@@ -41,9 +44,14 @@ fn main() {
 
         underglow_shader = box_shader(Box::new(transition(
             underglow_shader,
-            coral_state_indicator(*coral_state.lock().unwrap()).to_linsrgb(),
-            0.8,
-            *coral_state_last_change.read().unwrap(),
+            boxtube_shader(
+                *coral_state.lock().unwrap(),
+                *movement_state.lock().unwrap(),
+                *position_relative_to_align_target.lock().unwrap(),
+            )
+            .to_linsrgb(),
+            0.8 * Seconds,
+            *topics_last_changed.read().unwrap(),
         )))
         .arc();
 
