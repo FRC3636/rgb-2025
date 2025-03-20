@@ -8,11 +8,11 @@ use futures::{FutureExt, select};
 use network_tables::v4::{Client, Config};
 use smol::Timer;
 
-const CORAL_STATE_TOPIC: &str = "/RGB/Coral State";
-const MOVEMENT_STATE_TOPIC: &str = "/RGB/Movement State";
+const CORAL_STATE_TOPIC: &str = "RGB/Coral State";
+const MOVEMENT_STATE_TOPIC: &str = "RGB/Movement State";
 
 const POSITION_RELATIVE_TO_ALIGN_TARGET_TOPIC: &str =
-    "/RGB/Auto Align/Position Relative to Align Target";
+    "RGB/Auto Align/Position Relative to Align Target";
 
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

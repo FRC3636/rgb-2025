@@ -16,7 +16,7 @@ pub fn box_tube_to_intake() -> impl Iterator<Item = Point> + Clone {
             y: 0.0,
             z: 0.0,
         },
-        leds_per_segment - 1, // -1 due to hardware oopsie
+        leds_per_segment - 2, // -1 due to hardware oopsie
     )
     .chain(line(
         Point {
@@ -29,7 +29,7 @@ pub fn box_tube_to_intake() -> impl Iterator<Item = Point> + Clone {
             y: 0.0,
             z: 0.0,
         },
-        leds_per_segment - 1, // -1 due to hardware oopsie
+        leds_per_segment - 3, // -1 due to hardware oopsie
     ))
     .chain(line(
         Point {
