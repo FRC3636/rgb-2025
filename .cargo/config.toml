@@ -4,3 +4,11 @@ linker = "aarch64-unknown-linux-gnu-gcc"
 rustflags = [
     "-C", "link-arg=-Wl,--dynamic-linker=/lib/ld-linux-aarch64.so.1"
 ]
+
+[target.armv7-unknown-linux-gnueabihf]
+linker = "armv7l-unknown-linux-gnueabihf-gcc"
+rustflags = [
+    "-C", "link-arg=-mfpu=neon-vfpv4",
+    "-C", "link-arg=-mfloat-abi=hard",
+    "-C", "link-arg=-march=armv7-a"
+]

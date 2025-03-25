@@ -3,7 +3,7 @@ pub mod field_relative;
 pub mod pride;
 pub mod utils;
 
-use palette::LinSrgb;
+use palette::{LinSrgb, Mix};
 use shark::shader::{
     FragOne, FragThree, Fragment, IntoShader, Shader, ShaderExt,
     primitives::{color, off, time_rainbow},
@@ -60,19 +60,19 @@ pub fn random_pride_flag() -> impl Shader<FragOne> {
 
 fn coral_state_indicator(coral_state: CoralState) -> impl Shader<FragThree> {
     (move |frag: FragThree| match coral_state {
-        CoralState::None => flowy_rainbow().to_linsrgb().shade(frag),
-        CoralState::Held => conveyor(
-            color(LinSrgb::new(0.0, 1.0, 0.1)),
-            color(LinSrgb::new(0.2, 0.5, 0.6)),
-            0.3,
+        // CoralState::None => flowy_rainbow().to_linsrgb().shade(frag),
+        CoralState::None => conveyor(
+            color(LinSrgb::new(0.0, 0.4, 0.8)),
+            color(LinSrgb::new(0.0, 0.4, 0.8)).mix(off(), 0.4),
+            0.2,
             0.5,
         )
         .to_linsrgb()
-        .volume_blur(0.1, 12)
+        .volume_blur(0.03, 8)
         .extrude()
         .extrude()
         .shade(frag),
-
+        
         CoralState::Transit => conveyor(
             color(LinSrgb::new(0.03, 1.0, 0.32)),
             color(LinSrgb::new(1.0, 1.0, 1.0)),
@@ -80,6 +80,18 @@ fn coral_state_indicator(coral_state: CoralState) -> impl Shader<FragThree> {
             0.5,
         )
         .to_linsrgb()
+        .extrude()
+        .extrude()
+        .shade(frag),
+
+        CoralState::Held => conveyor(
+            color(LinSrgb::new(0.8, 0.3, 0.2)),
+            color(LinSrgb::new(1.0, 1.0, 1.0)),
+            0.3,
+            0.5,
+        )
+        .to_linsrgb()
+        .volume_blur(0.1, 12)
         .extrude()
         .extrude()
         .shade(frag),

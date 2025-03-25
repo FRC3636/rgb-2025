@@ -9,31 +9,28 @@
       let pkgs = nixpkgs.legacyPackages.${system};
       in {
         devShell = pkgs.mkShell {
-          buildInputs = with pkgs;
-            [
-              pkgsCross.aarch64-multiplatform.buildPackages.gcc
+          buildInputs = with pkgs; [
+            gcc-arm-embedded
+            pkgsCross.armv7l-hf-multiplatform.stdenv.cc
+            pkgsCross.aarch64-multiplatform.buildPackages.gcc
 
-              cmake
-              libcxx
+            cmake
+            libcxx
 
-              pkg-config
+            pkg-config
 
-              openssl
+            openssl
 
-               # GUI libs
-              libxkbcommon
-              libGL
-              fontconfig
-
-              # wayland libraries
-              wayland
-            ];
-          LD_LIBRARY_PATH = with pkgs; lib.makeLibraryPath [
-            wayland
+            # GUI libs
             libxkbcommon
             libGL
             fontconfig
+
+            # wayland libraries
+            wayland
           ];
+          LD_LIBRARY_PATH = with pkgs;
+            lib.makeLibraryPath [ wayland libxkbcommon libGL fontconfig ];
         };
       });
 }
