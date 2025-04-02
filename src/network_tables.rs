@@ -5,7 +5,8 @@ use std::{
 
 use async_compat::Compat;
 use futures::{FutureExt, select};
-use network_tables::v4::{Client, Config};
+use network_tables::{rmpv::Integer, v4::{Client, Config}};
+use shrewnit::{Length, Meters};
 use smol::Timer;
 
 const CORAL_STATE_TOPIC: &str = "RGB/Coral State";
@@ -53,7 +54,7 @@ pub struct NtReactives {
     pub coral_state: Arc<Mutex<CoralState>>,
 
     pub movement_state: Arc<Mutex<MovementState>>,
-    pub position_relative_to_align_target: Arc<Mutex<[f64; 2]>>,
+    pub position_relative_to_align_target: Arc<Mutex<[Length; 2]>>,
 
     pub topics_last_changed: Arc<RwLock<std::time::Instant>>,
 }
@@ -63,7 +64,7 @@ pub fn start_nt_daemon_task() -> NtReactives {
     let coral_state = Arc::new(Mutex::new(CoralState::None));
 
     let movement_state = Arc::new(Mutex::new(MovementState::Driver));
-    let position_relative_to_align_target = Arc::new(Mutex::new([0.0, 0.0]));
+    let position_relative_to_align_target = Arc::new(Mutex::new([0.0 * Meters, 0.0 * Meters]));
 
     let topics_last_changed = Arc::new(RwLock::new(std::time::Instant::now()));
 
@@ -76,6 +77,9 @@ pub fn start_nt_daemon_task() -> NtReactives {
     std::thread::spawn(move || {
         smol::block_on(Compat::new(async {
             let client = setup_nt_client().await;
+
+            let ptop = client.publish_topic(CORAL_STATE_TOPIC, network_tables::v4::Type::Int, None).await.unwrap();
+            client.publish_value(&ptop, &network_tables::Value::from(0)).await.unwrap();
 
             let mut coral_state_sub = client.subscribe(&[CORAL_STATE_TOPIC]).await.unwrap();
             let mut movement_state_sub = client.subscribe(&[MOVEMENT_STATE_TOPIC]).await.unwrap();
@@ -93,7 +97,10 @@ pub fn start_nt_daemon_task() -> NtReactives {
                             0 => CoralState::None,
                             1 => CoralState::Held,
                             2 => CoralState::Transit,
-                            _ => panic!("Invalid coral state"),
+                            _ => {
+                                println!("Invalid coral state");
+                                continue
+                            },
                         };
                     },
                     data = movement_state_sub.next().fuse() => {
@@ -104,13 +111,16 @@ pub fn start_nt_daemon_task() -> NtReactives {
                             1 => MovementState::AutoAlignPath,
                             2 => MovementState::AutoAlignPid,
                             3 => MovementState::SuccessfullyAligned,
-                            _ => panic!("Invalid movement state"),
+                            _ => {
+                                println!("Invalid movement state");
+                                continue
+                            },
                         };
                     },
                     data = position_relative_to_align_target_sub.next().fuse() => {
                         let value = data.unwrap().data.as_array().unwrap().iter().map(|value| value.as_f64().unwrap()).collect::<Vec<_>>();
                         let mut lock = position_relative_to_align_target_clone.lock().unwrap();
-                        *lock = [value[0], value[1]];
+                        *lock = [value[0] * Meters, value[1] * Meters];
                     },
                 }
 

@@ -10,5 +10,6 @@ linker = "armv7l-unknown-linux-gnueabihf-gcc"
 rustflags = [
     "-C", "link-arg=-mfpu=neon-vfpv4",
     "-C", "link-arg=-mfloat-abi=hard",
-    "-C", "link-arg=-march=armv7-a"
+    "-C", "link-arg=-march=armv7-a",
+    "-C", "link-arg=-Wl,--dynamic-linker=/lib/ld-linux-armhf.so.3"
 ]

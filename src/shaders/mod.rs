@@ -10,6 +10,7 @@ use shark::shader::{
 };
 
 pub use atoms::*;
+use shrewnit::{Dimension, Length, Meters};
 pub use utils::*;
 
 use crate::network_tables::{CoralState, MovementState};
@@ -72,7 +73,7 @@ fn coral_state_indicator(coral_state: CoralState) -> impl Shader<FragThree> {
         .extrude()
         .extrude()
         .shade(frag),
-        
+
         CoralState::Transit => conveyor(
             color(LinSrgb::new(0.03, 1.0, 0.32)),
             color(LinSrgb::new(1.0, 1.0, 1.0)),
@@ -85,8 +86,8 @@ fn coral_state_indicator(coral_state: CoralState) -> impl Shader<FragThree> {
         .shade(frag),
 
         CoralState::Held => conveyor(
-            color(LinSrgb::new(0.8, 0.3, 0.2)),
-            color(LinSrgb::new(1.0, 1.0, 1.0)),
+            color(LinSrgb::new(0.2, 0.6, 0.8)),
+            color(LinSrgb::new(1.0, 0.2, 1.0)),
             0.3,
             0.5,
         )
@@ -101,27 +102,39 @@ fn coral_state_indicator(coral_state: CoralState) -> impl Shader<FragThree> {
 
 fn auto_align_indicator(
     movement_state: MovementState,
-    relative_pos: [f64; 2],
+    relative_pos: [Length; 2],
 ) -> impl Shader<FragThree> {
     (move |frag: FragThree| {
         let relative_frag = FragThree {
             pos: [
-                frag.pos[0] + relative_pos[0],
-                frag.pos[1] + relative_pos[1],
+                frag.pos[0] + relative_pos[0].to::<Meters>(),
+                frag.pos[1] + relative_pos[1].to::<Meters>(),
                 frag.pos[2],
             ],
             ..frag
         };
         match movement_state {
-            MovementState::AutoAlignPath => distance_shader([0.0, 0.0], 5.0)
+            MovementState::AutoAlignPath => color(LinSrgb::new(1.0, 1.0, 1.0))
+                .subtract(distance_shader([0.0, 0.0], 1.0))
                 .extrude()
                 .multiply(color(LinSrgb::new(0.4, 0.8, 0.2)))
                 .shade(relative_frag),
-            MovementState::AutoAlignPid => distance_shader([0.0, 0.0], 5.0)
+            MovementState::AutoAlignPid => color(LinSrgb::new(1.0, 1.0, 1.0))
+                .subtract(distance_shader([0.0, 0.0], 1.0))
                 .extrude()
-                .multiply(color(LinSrgb::new(0.2, 1.0, 0.2)))
+                .multiply(color(LinSrgb::new(0.3, 1.0, 0.8)))
                 .shade(relative_frag),
-            MovementState::SuccessfullyAligned => color(LinSrgb::new(0.0, 1.0, 0.8)).shade(frag),
+            MovementState::SuccessfullyAligned => conveyor(
+                color(LinSrgb::new(0.1, 1.0, 0.0)),
+                color(LinSrgb::new(0.1, 1.0, 0.2)),
+                0.2,
+                0.5,
+            )
+            .to_linsrgb()
+            .volume_blur(0.1, 7)
+            .extrude()
+            .extrude()
+            .shade(frag),
 
             MovementState::Driver => unreachable!(),
         }
@@ -132,7 +145,7 @@ fn auto_align_indicator(
 pub fn boxtube_shader(
     coral_state: CoralState,
     movement_state: MovementState,
-    relative_pos: [f64; 2],
+    relative_pos: [Length; 2],
 ) -> impl Shader<FragThree> {
     match movement_state {
         MovementState::Driver => {

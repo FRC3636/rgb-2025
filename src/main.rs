@@ -50,7 +50,7 @@ fn main() {
                 *position_relative_to_align_target.lock().unwrap(),
             )
             .to_linsrgb(),
-            0.8 * Seconds,
+            0.4 * Seconds,
             *topics_last_changed.read().unwrap(),
         )))
         .arc();
