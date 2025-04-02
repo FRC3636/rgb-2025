@@ -125,8 +125,8 @@ fn auto_align_indicator(
                 .multiply(color(LinSrgb::new(0.3, 1.0, 0.8)))
                 .shade(relative_frag),
             MovementState::SuccessfullyAligned => conveyor(
-                color(LinSrgb::new(0.1, 1.0, 0.0)),
-                color(LinSrgb::new(0.1, 1.0, 0.2)),
+                color(LinSrgb::new(0.05, 1.0, 0.0)),
+                color(LinSrgb::new(0.05, 1.0, 0.1)),
                 0.2,
                 0.5,
             )
